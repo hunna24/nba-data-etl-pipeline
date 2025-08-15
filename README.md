@@ -60,4 +60,25 @@ An end-to-end ETL (Extract, Transform, Load) pipeline for collecting, processing
 >I design a database schema for storing players, games, and statistics.
 
 ## Epic 3 Story 2 
+>I create tables in my database that match the cleaned data structure sothat SQL query is as quick as possible
 
+## Epic 3 Story 3 
+>I write a script to load processed CSV files into the database automatically.
+
+## Epic 3 Story 4
+>I verify that the data loads without errors and matches the original source.
+
+## Epic 4 Story 1
+>I compute advanced player metrics like True Shooting %, Usage Rate, and Win Shares.
+
+## Epic 4 Story 2
+>I compare team performance across multiple seasons using custom metrics.
+
+## Epic 5 Story 1
+>I build interactive dashboards using Streamlit or Plotly Dash.
+
+## Epic 5 Story 2
+>I add filters for selecting specific teams, players, or seasons.
+
+## Epic 5 Story 3
+>I deploy my dashboard so others can view it without installing anything.
