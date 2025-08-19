@@ -1,1 +1,46 @@
-load code here
+import os
+import pandas as pd
+from sqlalchemy import create_engine
+from dotenv import load_dotenv
+
+# Load environment variables from .env (make sure you created one with DB creds)
+load_dotenv()
+
+DB_USER = os.getenv("TARGET_DB_USER")
+DB_PASS = os.getenv("TARGET_DB_PASSWORD")
+DB_HOST = os.getenv("TARGET_DB_HOST")
+DB_PORT = os.getenv("TARGET_DB_PORT")
+DB_NAME = os.getenv("TARGET_DB_NAME")
+DB_SCHEMA = os.getenv("TARGET_DB_SCHEMA", "de_2506_a")
+
+# Create connection string
+engine = create_engine(
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
+def load_csv_to_pg(path, table, schema=DB_SCHEMA, chunksize=50000):
+    """
+    Load a CSV file into PostgreSQL in chunks
+    """
+    print(f"🚀 Loading {path} into {schema}.{table} ...")
+    for chunk in pd.read_csv(path, chunksize=chunksize):
+        chunk.to_sql(table, engine, schema=schema, if_exists="append", index=False)
+    print(f"Finished loading {path} into {schema}.{table}")
+
+if __name__ == "__main__":
+    # Update with your actual CSV paths
+    csv_dir = "csv_extracted"
+
+    files_to_tables = {
+        "team.csv": "sd_dim_teams",
+        "player.csv": "sd_dim_players",
+        "game.csv": "sd_fact_games",
+        "line_score.csv": "sd_fact_player_stats"
+    }
+
+    for file, table in files_to_tables.items():
+        path = os.path.join(csv_dir, file)
+        if os.path.exists(path):
+            load_csv_to_pg(path, table)
+        else:
+            print(f"Skipping {file}, not found at {path}")
