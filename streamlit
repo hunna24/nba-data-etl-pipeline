@@ -1,0 +1,120 @@
+import streamlit as st
+import pandas as pd
+from sqlalchemy import create_engine
+
+# --- Database connection ---
+DB_USER = "de13_sadh"
+DB_PASS = "CpKSyW7F"
+DB_HOST = "data-sandbox.c1tykfvfhpit.eu-west-2.rds.amazonaws.com"
+DB_PORT = "5432"
+DB_NAME = "pagila"
+DB_SCHEMA = "de_2506_a"
+
+engine = create_engine(f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+
+# --- Load data ---
+@st.cache_data
+def load_data():
+    teams_df = pd.read_sql(f"SELECT * FROM {DB_SCHEMA}.sd_fact_team_summary", engine)
+    players_df = pd.read_sql(f"SELECT * FROM {DB_SCHEMA}.sd_facts_player_stats", engine)
+    return teams_df, players_df
+
+teams_df, players_df = load_data()
+
+page = st.sidebar.selectbox("Choose Page", ["Teams", "Players"])
+
+# --- Teams Page ---
+if page == "Teams":
+    st.title("Team Stats per Season Lookup")
+    
+    season = st.selectbox("Select Season", sorted(teams_df["season"].unique()))
+    
+    team_logos = {
+        "Atlanta Hawks": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
+        "Boston Celtics": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+        "Brooklyn Nets": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
+        "Charlotte Hornets": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+        "Chicago Bulls": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+        "Cleveland Cavaliers": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
+        "Dallas Mavericks": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
+        "Denver Nuggets": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+        "Detroit Pistons": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
+        "Golden State Warriors": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
+        "Houston Rockets": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
+        "Indiana Pacers": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
+        "LA Clippers": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+        "Los Angeles Lakers": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+        "Memphis Grizzlies": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
+        "Miami Heat": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+        "Milwaukee Bucks": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
+        "Minnesota Timberwolves": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
+        "New Orleans Pelicans": "https://a.espncdn.com/i/teamlogos/nba/500/no.png",
+        "New York Knicks": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
+        "Oklahoma City Thunder": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
+        "Orlando Magic": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+        "Philadelphia 76ers": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+        "Phoenix Suns": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+        "Portland Trail Blazers": "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
+        "Sacramento Kings": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
+        "San Antonio Spurs": "https://a.espncdn.com/i/teamlogos/nba/500/sa.png",
+        "Toronto Raptors": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+        "Utah Jazz": "https://a.espncdn.com/i/teamlogos/nba/500/utah.png",
+        "Washington Wizards": "https://a.espncdn.com/i/teamlogos/nba/500/wsh.png"
+    }
+
+    
+    team = st.selectbox("Select Team", sorted(teams_df["team_name"].unique()))
+
+    if team in team_logos:
+        col1, col2, col3 = st.columns([1,2,1])  
+        with col2:
+            st.image(team_logos[team], width=150)
+            st.markdown(f"<h2 style='text-align: center;'>{team}</h2>", unsafe_allow_html=True)  ### NEW
+    else:
+        st.write("Logo not available.")
+
+    team_stats = teams_df[(teams_df["team_name"] == team) & (teams_df["season"] == season)]
+
+    ### NEW --- Metrics summary row ---
+    if not team_stats.empty:
+        latest_stats = team_stats.iloc[0]
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Wins", int(latest_stats["wins"]))
+        col2.metric("Losses", int(latest_stats["losses"]))
+        col3.metric("Win %", f"{latest_stats['win_pct']:.3f}")
+        col4.metric("Seed", int(latest_stats["seed"]) if "seed" in latest_stats else "N/A")
+
+    st.subheader(f"{team} - Season {season}")
+    st.dataframe(team_stats)
+
+    
+    st.subheader("Win/Loss & Win% Trend")
+    team_history = teams_df[teams_df["team_name"] == team].sort_values("season")
+    st.line_chart(team_history.set_index("season")[["wins", "losses", "win_pct"]])
+
+# --- Players Page ---
+elif page == "Players":
+    st.title("Player Stats Lookup")
+    
+    player = st.selectbox("Select Player", sorted(players_df["player"].unique()))
+    
+    player_stats = players_df[players_df["player"] == player].sort_values("season_year")
+    st.subheader(f"{player} Career Stats")
+    st.dataframe(player_stats)
+
+    draft_info = player_stats[["player", "team"]].drop_duplicates()
+    st.subheader("Draft Information")
+    st.table(draft_info)
+    
+    if not player_stats.empty:
+        latest_stats = player_stats.iloc[-1]
+        col1, col2, col3, col4, col5 = st.columns(5)
+        col1.metric("Games Played", int(player_stats["games"].sum()))
+        col2.metric("Points Per Game", f"{player_stats['pts'].mean():.1f}")
+        col3.metric("Assists Per Game", f"{player_stats['ast'].mean():.1f}")
+        col4.metric("Rebounds Per Game", f"{player_stats['trb'].mean():.1f}")
+        col5.metric("Field Goal %", f"{player_stats['fg%'].mean():.3f}")
+
+      
+    st.subheader(f"{player} Season Trends")
+    st.line_chart(player_stats.set_index("season_year")[["pts", "ast", "trb", "fg%"]])
