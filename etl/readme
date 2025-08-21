@@ -1,0 +1,70 @@
+
+This Python script handles the complete Extract, Transform, Load process for NBA-related datasets. It takes multiple CSV files, cleans and processes the data, and loads it into a PostgreSQL database. The script updates both dimension tables and fact tables in a star-schema style database.
+
+How It Works
+
+Database Connection
+The script connects to a PostgreSQL database using SQLAlchemy. Database credentials are defined at the top of the script. Transactions are handled safely to make sure all changes are committed.
+
+Extract
+The script reads data from CSV files including:
+
+Team details (team_details.csv)
+
+Player information (common_player_info.csv)
+
+Player stats (scoring.csv and assists-turnovers.csv)
+
+Team season summaries (team_summaries.csv)
+
+Additional files like Team_Stats_Per_100.csv can also be loaded for derived metrics.
+
+In this process, I've downloaded datasets from kaggle that would give me information on teams, their win/loss stats and on players and their seasonal averages. 
+
+Transform
+The script cleans and prepares the data for the database. This includes:
+
+Standardizing column names to match the database
+
+Converting numeric columns such as height, weight, and season experience into the correct types
+
+Handling missing or invalid values
+
+Merging data from multiple sources to create unified datasets for player statistics
+
+Creating derived fields, like a high_usage flag for players who average more than 30 minutes per game
+
+Keeping only the columns that are relevant to the database
+
+Load
+The script inserts or updates records in the database. It updates dimension tables like sd_dim_teams and sd_dim_players, and loads fact tables like sd_facts_player_season_stats and sd_fact_team_summary.
+It uses conflict handling to prevent duplicates and make sure updates happen correctly.
+
+Dependencies
+
+pandas for data manipulation
+
+sqlalchemy for connecting to the database
+
+psycopg2 as the PostgreSQL driver
+
+How to Use
+
+Place your CSV files in the csv_extracted folder
+
+Update the database credentials in the script or set them as environment variables
+
+Run the script using:
+
+python etl_script.py
+
+
+The script will automatically clean, transform, and load all the data into the database.
+
+Notes
+
+All numeric conversions handle missing or invalid values gracefully
+
+The script assumes the database schema already exists and that column names match the mappings in the script
+
+Derived fields like high_usage can be used for analytics or dashboards
