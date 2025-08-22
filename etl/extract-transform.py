@@ -3,28 +3,38 @@ from sqlalchemy import create_engine, text
 import math
 import os
 
+# DB credentials
+DB_USER = "de13_sadh"
+DB_PASS = "CpKSyW7F"
+DB_HOST = "data-sandbox.c1tykfvfhpit.eu-west-2.rds.amazonaws.com"
+DB_PORT = "5432"
+DB_NAME = "pagila"
+DB_SCHEMA = "de_2506_a"
+
 
 engine = create_engine(f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 
 team_details = pd.read_csv("csv_extracted/team_details.csv")
 
+
 team_details = team_details.rename(columns={
     "year_founded": "yearfounded",
     "arena_capacity": "arenacapacity",
-    "arena_name": "arena"   # if your CSV has this column
+    "arena_name": "arena"   
 })
+
 
 db_columns = ["team_id", "owner", "generalmanager", "headcoach", 
               "arenacapacity", "yearfounded", "arena"]
 team_details = team_details[[col for col in team_details.columns if col in db_columns]]
 
-# --- Update the database ---
-with engine.begin() as conn:  # ensures commit
+
+with engine.begin() as conn:  
     for _, row in team_details.iterrows():
         row_dict = row.to_dict()
 
-        # clean values before inserting
+        
         if isinstance(row_dict.get("yearfounded"), float):
             row_dict["yearfounded"] = int(row_dict["yearfounded"]) if not math.isnan(row_dict["yearfounded"]) else None
         if isinstance(row_dict.get("arenacapacity"), float):
@@ -43,7 +53,7 @@ with engine.begin() as conn:  # ensures commit
 
         conn.execute(update_stmt, row_dict)
 
-# Load CSV
+
 df = pd.read_csv("csv_extracted/common_player_info.csv")
 
 df = df.rename(columns={
@@ -60,6 +70,7 @@ db_columns = [
 ]
 df = df[[col for col in df.columns if col in db_columns]]
 
+
 for col in ["height", "weight", "season_exp", "from_year", "to_year", "draft_year", "draft_round", "draft_number"]:
     if col in df.columns:
         df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
@@ -68,6 +79,7 @@ with engine.begin() as conn:
     for _, row in df.iterrows():
         row_dict = {k: (None if pd.isna(v) else v) for k, v in row.to_dict().items()}
 
+# was getting some errors with mapping this into tables so i had chatgpt help me with some errors and whether i should use upsert statements and to use on conflict.
         upsert_stmt = text("""
             INSERT INTO de_2506_a.sd_dim_players (
                 player_id, first_name, last_name, display_fi_last, birthdate,
@@ -84,7 +96,7 @@ with engine.begin() as conn:
                 :draft_year, :draft_round, :draft_number
             )
             ON CONFLICT (player_id) DO UPDATE
-            SET first_name = EXCLUDED.first_name,
+            SET first_name = EXCLUDED.first_name,                                               
                 last_name = EXCLUDED.last_name,
                 display_fi_last = EXCLUDED.display_fi_last,
                 birthdate = EXCLUDED.birthdate,
@@ -112,7 +124,7 @@ with engine.begin() as conn:
         conn.execute(upsert_stmt, row_dict)
         
 
-# --- Load CSVs ---
+
 scoring = pd.read_csv("C:/Users/hanna/etl-capstone/csv_extracted/scoring.csv")
 assists_turnovers = pd.read_csv("C:/Users/hanna/etl-capstone/csv_extracted/assists-turnovers.csv")
 
@@ -182,6 +194,8 @@ columns_to_keep = [
 
 player_stats = player_stats[columns_to_keep]
 
+
+
 player_stats.to_sql(
     'sd_facts_player_season_stats',
     engine,
@@ -190,7 +204,10 @@ player_stats.to_sql(
     index=False
 )
 
+
+
 df = pd.read_csv("csv_extracted/team_summaries.csv")
+
 
 df.columns = df.columns.str.strip().str.lower()
 
@@ -208,13 +225,13 @@ df = df.rename(columns={
 df["wins"] = pd.to_numeric(df["wins"], errors="coerce").astype("Int64")
 df["losses"] = pd.to_numeric(df["losses"], errors="coerce").astype("Int64")
 df["avg_age"] = pd.to_numeric(df["avg_age"], errors="coerce")
-df["season"] = pd.to_numeric(df["season"], errors="coerce").astype("Int64")  # or str if needed
+df["season"] = pd.to_numeric(df["season"], errors="coerce").astype("Int64")  
 df["playoffs"] = df["playoffs"].astype(str).str.lower().map({
     "1": True, "true": True, "yes": True,
     "0": False, "false": False, "no": False
 })
 
-
+# had gpt help me figure out why i was getting null values and errors when loading this data into the table. 
 with engine.begin() as conn:
     for _, row in df.iterrows():
         row_dict = {k: (None if pd.isna(v) else v) for k, v in row.to_dict().items()}
@@ -229,25 +246,8 @@ with engine.begin() as conn:
         """)
         conn.execute(insert_stmt, row_dict)
 
-import pandas as pd
-from sqlalchemy import create_engine, text
-import os
-DB_URL = os.getenv("DB_URL")
-
-# # Load CSV
-# df = pd.read_csv("csv_extracted/Team_Stats_Per_100.csv")
-# df.columns = df.columns.str.strip().str.lower()
-
-# # Rename for clarity
-# df = df.rename(columns={"fg_percent": "fg_pct", "team": "team_name"})
-
-# # Convert types
-# df["fg_pct"] = pd.to_numeric(df["fg_pct"], errors="coerce")
-# df["season"] = pd.to_numeric(df["season"], errors="coerce").astype("Int64")
-
 
 player_stats['high_usage'] = player_stats['minutes_per_game'] > 30
-
 
 
 
