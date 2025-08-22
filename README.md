@@ -11,7 +11,7 @@ An end-to-end ETL (Extract, Transform, Load) pipeline for collecting, processing
 ## Tech Stack
 - Python (pandas, requests, sqlalchemy)
 - PostgreSQL / SQLite
-- Jupyter Notebooks for analysis
+- Streamlit for visualisations
 
 
 # Epics
